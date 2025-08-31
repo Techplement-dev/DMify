@@ -1,36 +1,126 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
-## Getting Started
+DMify - Auto DM Tool
 
-First, run the development server:
+Project Overview
 
-```bash
+DMify is a Next.js frontend project that integrates with Supabase for authentication.
+Users must log in to access the Welcome page and then can navigate to Home, All Posts, or Dashboard.
+
+Folder structure
+
+src/
+ └─ app/
+     ├─ Header/          # Header component
+     ├─ allposts/        # All posts page
+     ├─ dashboard/[id]/  # Dashboard page (dynamic route)
+     ├─ home/            # Home page
+     ├─ login/           # Login and Signup components
+     ├─ welcomePage/     # Welcome page after login
+     ├─ globals.css      # Global styles
+     ├─ layout.js        # Main layout wrapper
+     └─ page.js          # Default redirect to /login
+
+
+---
+
+Prerequisites
+
+Node.js >= 18
+
+npm or yarn
+
+Git
+
+Supabase account (for authentication)
+
+
+
+---
+
+Getting Started
+
+1. Clone the repository
+
+git clone https://github.com/Techplement-dev/DMify.git
+cd DMify
+
+2. Install dependencies
+   
+npm install
+# or
+yarn install
+
+3. Environment Variables
+
+Create a .env file in the root folder and add your Supabase keys:
+
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+
+> Do not commit .env to GitHub. It is already added to .gitignore.
+
+4. Run the development server
+
+
+
 npm run dev
 # or
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000 to view in the browser.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+By default, it redirects to /login.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## Learn More
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Project Flow
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Login / Signup (src/app/login/)
 
-## Deploy on Vercel
+User enters email and password
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Auth handled by Supabase
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+
+2. Welcome Page (src/app/welcomePage/)
+
+Accessible only after login
+
+Shows a “Connect to Instagram” button
+
+
+
+3. Home, All Posts, Dashboard
+
+Navigation via Header component (src/app/Header/)
+
+Dashboard uses dynamic route [id]
+
+
+
+
+
+---
+
+Scripts
+
+Command	Description
+
+npm run dev	Start development server
+npm run build	Build production version
+npm start	Start production server
+npm run lint	Run linting
+
+
+
+---
+
+Notes
+
+Make sure eslint.config.zip or other large files are not in the repo.
+
+Team members can safely clone and start without conflicts.
