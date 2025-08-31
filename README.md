@@ -11,12 +11,12 @@ Folder structure
 
 src/
  └─ app/
-     ├─ Header/          # Header component
-     ├─ allposts/        # All posts page
-     ├─ dashboard/[id]/  # Dashboard page (dynamic route)
+     ├─ Header/          # Header com
+     ├─ allposts/        # All posts p
+     ├─ dashboard/[id]/  # Dashboard (dynamic route)
      ├─ home/            # Home page
-     ├─ login/           # Login and Signup components
-     ├─ welcomePage/     # Welcome page after login
+     ├─ login/           # Login and S
+     ├─ welcomePage/     # Welcome pag
      ├─ globals.css      # Global styles
      ├─ layout.js        # Main layout wrapper
      └─ page.js          # Default redirect to /login
