@@ -9,8 +9,11 @@ Users must log in to access the Welcome page and then can navigate to Home, All 
 
 Folder structure
 
+
+
 src/
  └─ app/
+ 
      ├─ Header
      ├─ allposts
      ├─ dashboard/[id]
