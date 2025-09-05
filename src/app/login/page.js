@@ -2,11 +2,15 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "src/lib/supabaseClient";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [message, setMessage] = useState("");
   const router = useRouter();
 
@@ -23,16 +27,31 @@ export default function AuthPage() {
   };
 
   // Handle signup with Supabase
-  const handleSignup = async (e) => {
-    e.preventDefault();
-    const { error } = await supabase.auth.signUp({ email, password });
-    if (error) {
-      setMessage(`* ${error.message}`);
-    } else {
-      setMessage("* Check your email for verification link!");
-      setIsLogin(true);
-    }
-  };
+const handleSignup = async (e) => {
+  e.preventDefault();
+
+   if (!email || !password || !confirmPassword) {
+    setMessage("* Please enter all fields.");
+    return;
+  }
+
+  if (password !== confirmPassword) {
+    setMessage("* Passwords do not match.");
+    return;
+  }
+
+
+   // 2. Supabase signup
+  const { error } = await supabase.auth.signUp({ email, password });
+
+  if (error) {
+    setMessage(`* ${error.message}`);    
+  } else {
+    setMessage("* Check your email for verification link!");
+    setIsLogin(true);
+  }
+};
+
 
   const toggleAuth = () => {
     setMessage("");
@@ -61,14 +80,22 @@ export default function AuthPage() {
               className="w-full mb-3 p-2 rounded bg-gray-800 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
 
-            {/* Password Input */}
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full mb-3 p-2 rounded bg-gray-800 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            {/* Password Input with Eye */}
+            <div className="relative w-full mb-3">
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full p-2 rounded bg-gray-800 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <span
+                className="absolute right-3 top-3 cursor-pointer text-gray-400"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
+              </span>
+            </div>
 
             {/* Inline Message */}
             {message && isLogin && (
@@ -108,14 +135,39 @@ export default function AuthPage() {
               className="w-full mb-3 p-2 rounded bg-gray-800 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500"
             />
 
-            {/* Password Input */}
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full mb-3 p-2 rounded bg-gray-800 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500"
-            />
+            {/* Create Password Input with Eye */}
+            <div className="relative w-full mb-3">
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Create Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full p-2 rounded bg-gray-800 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+              <span
+                className="absolute right-3 top-3 cursor-pointer text-gray-400"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
+              </span>
+            </div>
+
+            {/* Confirm Password Input with Eye */}
+            <div className="relative w-full mb-3">
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                placeholder="Confirm Password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full p-2 rounded bg-gray-800 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+              <span
+                className="absolute right-3 top-3 cursor-pointer text-gray-400"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              >
+                {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+              </span>
+            </div>
 
             {/* Inline Message */}
             {message && !isLogin && (
