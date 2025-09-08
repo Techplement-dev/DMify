@@ -44,7 +44,7 @@ export default function HomePage() {
 
   return (
     <>
-      <Header />
+       <Header />
 
       {/* Page Wrapper with custom dark theme */}
       <div className="min-h-screen bg-black text-gray-200 p-6">
@@ -114,6 +114,7 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+     
     </>
   );
 }

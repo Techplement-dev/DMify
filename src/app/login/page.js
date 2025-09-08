@@ -1,8 +1,9 @@
 "use client";
-import { useState } from "react";
+import cookies from "js-cookie";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "src/lib/supabaseClient";
-import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { login, signup } from "src/lib/api"; // Custom API functions
+import { FaEye, FaEyeSlash } from "react-icons/fa"; // Eye icons for password toggle
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -11,188 +12,179 @@ export default function AuthPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
   const router = useRouter();
 
-  // Handle login with Supabase
-  const handleLogin = async (e) => {
+  // ✅ Handle auto-login via Supabase magic link
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash;
+      if (hash) {
+        const params = new URLSearchParams(hash.substring(1));
+        const accessToken = params.get("access_token");
+        if (accessToken) {
+          // Save token in cookies + localStorage
+          cookies.set("token", accessToken, { secure: true, sameSite: "strict" });
+          localStorage.setItem("token", accessToken);
+
+          // Clean URL
+          window.history.replaceState({}, document.title, "/login");
+
+          // Redirect to welcome page
+          router.push("/welcomePage");
+        }
+      }
+    }
+  }, []);
+
+  // Handle signup
+  const handleSignup = async (e) => {
     e.preventDefault();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      setMessage(`* ${error.message}`);
+    setError("");
+    setSuccess("");
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    const data = await signup(email, password);
+
+    if (data.error) {
+      setError(data.error);
     } else {
-      setMessage("");
-      router.push("/welcomePage");
+      setSuccess(data.message);
+      setEmail("");
+      setPassword("");
+      setConfirmPassword("");
     }
   };
 
-  // Handle signup with Supabase
-const handleSignup = async (e) => {
-  e.preventDefault();
+  // Handle login
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
 
-   if (!email || !password || !confirmPassword) {
-    setMessage("* Please enter all fields.");
-    return;
-  }
+    const data = await login(email, password);
 
-  if (password !== confirmPassword) {
-    setMessage("* Passwords do not match.");
-    return;
-  }
+    if (data.token) {
+      cookies.set("token", data.token, { secure: true, sameSite: "strict" });
+      localStorage.setItem("token", data.token);
 
-
-   // 2. Supabase signup
-  const { error } = await supabase.auth.signUp({ email, password });
-
-  if (error) {
-    setMessage(`* ${error.message}`);    
-  } else {
-    setMessage("* Check your email for verification link!");
-    setIsLogin(true);
-  }
-};
-
-
-  const toggleAuth = () => {
-    setMessage("");
-    setIsLogin(!isLogin);
+      setSuccess("Login successful! Redirecting...");
+      setTimeout(() => {
+        router.push("/welcomePage");
+      }, 1500);
+    } else {
+      if (data.error?.includes("verify")) {
+        setError("Please verify your email with OTP before logging in.");
+        setTimeout(() => {
+          router.push("/verify-otp");
+        }, 2000);
+      } else {
+        setError(data.error || "Login failed");
+      }
+    }
   };
 
   return (
-    <div className="flex items-center justify-center h-screen bg-black text-white">
-      {/* Container with 3D flip effect */}
-      <div className="relative w-96 h-96 perspective">
-        <div
-          className={`absolute w-full h-full transition-transform duration-700 [transform-style:preserve-3d] ${
-            isLogin ? "" : "rotate-y-180"
-          }`}
-        >
-          {/* Login Card */}
-          <div className="absolute w-full h-full bg-gray-900 text-white p-6 rounded-xl shadow-lg [backface-visibility:hidden] flex flex-col justify-center items-center border border-gray-700">
-            <h2 className="text-3xl font-bold underline mb-6">Login</h2>
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black p-6">
+      <div className="w-full max-w-md perspective">
+        <div className="bg-gray-900/80 backdrop-blur-md p-8 rounded-2xl shadow-2xl transform transition-transform duration-500 hover:rotate-y-6">
+          <h1 className="text-3xl font-bold text-center text-white mb-6 mt-4">
+            {isLogin ? "Login" : "Sign Up"}
+          </h1>
 
+          <form onSubmit={isLogin ? handleLogin : handleSignup} className="space-y-5 mt-8">
             {/* Email Input */}
-            <input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full mb-3 p-2 rounded bg-gray-800 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <div>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full px-4 py-3 rounded-lg bg-gray-800/80 border border-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                placeholder="Enter your email"
+              />
+            </div>
 
-            {/* Password Input with Eye */}
-            <div className="relative w-full mb-3">
+            {/* Password Input */}
+            <div className="relative flex items-center">
               <input
                 type={showPassword ? "text" : "password"}
-                placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full p-2 rounded bg-gray-800 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+                className="w-full px-4 py-3 rounded-lg bg-gray-800/80 border border-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 pr-10"
+                placeholder="Enter your password"
               />
-              <span
-                className="absolute right-3 top-3 cursor-pointer text-gray-400"
+              <button
+                type="button"
+                className="absolute right-3 text-gray-400 flex items-center justify-center h-full cursor-pointer"
                 onClick={() => setShowPassword(!showPassword)}
               >
                 {showPassword ? <FaEyeSlash /> : <FaEye />}
-              </span>
+              </button>
             </div>
 
-            {/* Inline Message */}
-            {message && isLogin && (
-              <p className="text-red-400 text-sm mb-2">{message}</p>
+            {/* Confirm Password Input (Signup Only) */}
+            {!isLogin && (
+              <div className="relative flex items-center">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 rounded-lg bg-gray-800/80 border border-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 pr-10"
+                  placeholder="Confirm your password"
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 text-gray-400 flex items-center justify-center h-full cursor-pointer"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+                </button>
+              </div>
             )}
 
-            {/* Login Button */}
-            <button
-              onClick={handleLogin}
-              className="w-full bg-green-600 hover:bg-green-500 p-2 rounded mb-4 cursor-pointer transition"
-            >
-              Login
-            </button>
-
-            {/* Switch to Signup */}
-            <p className="text-gray-400">
-              Don’t have an account?{" "}
-              <button
-                onClick={toggleAuth}
-                className="text-blue-400 hover:underline cursor-pointer"
-              >
-                Sign Up
-              </button>
-            </p>
-          </div>
-
-          {/* Signup Card */}
-          <div className="absolute w-full h-full bg-gray-900 text-white p-6 rounded-xl shadow-lg rotate-y-180 [backface-visibility:hidden] flex flex-col justify-center items-center border border-gray-700">
-            <h2 className="text-3xl font-bold underline mb-6">Signup</h2>
-
-            {/* Email Input */}
-            <input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full mb-3 p-2 rounded bg-gray-800 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500"
-            />
-
-            {/* Create Password Input with Eye */}
-            <div className="relative w-full mb-3">
-              <input
-                type={showPassword ? "text" : "password"}
-                placeholder="Create Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full p-2 rounded bg-gray-800 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500"
-              />
-              <span
-                className="absolute right-3 top-3 cursor-pointer text-gray-400"
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? <FaEyeSlash /> : <FaEye />}
-              </span>
-            </div>
-
-            {/* Confirm Password Input with Eye */}
-            <div className="relative w-full mb-3">
-              <input
-                type={showConfirmPassword ? "text" : "password"}
-                placeholder="Confirm Password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full p-2 rounded bg-gray-800 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500"
-              />
-              <span
-                className="absolute right-3 top-3 cursor-pointer text-gray-400"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              >
-                {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
-              </span>
-            </div>
-
-            {/* Inline Message */}
-            {message && !isLogin && (
-              <p className="text-red-400 text-sm mb-2">{message}</p>
+            {/* Error Message */}
+            {error && (
+              <p className="mt-4 text-red-400 font-medium text-center">* {error}</p>
             )}
 
-            {/* Signup Button */}
+            {/* Submit Button */}
             <button
-              onClick={handleSignup}
-              className="w-full bg-blue-600 hover:bg-blue-500 p-2 rounded mb-4 cursor-pointer transition"
+              type="submit"
+              className={`w-full py-3 px-4 font-semibold rounded-lg shadow-md transition-all duration-300 transform hover:scale-105 cursor-pointer ${
+                isLogin ? "bg-green-600 hover:bg-green-700" : "bg-indigo-600 hover:bg-indigo-700"
+              }`}
             >
-              Sign Up
+              {isLogin ? "Login" : "Sign Up"}
             </button>
 
-            {/* Switch to Login */}
-            <p className="text-gray-400">
-              Already have an account?{" "}
+            {/* Toggle Login/Signup */}
+            <p className="mt-6 text-center text-gray-400 text-sm">
+              {isLogin ? "Don’t have an account?" : "Already have an account?"}{" "}
               <button
-                onClick={toggleAuth}
-                className="text-blue-400 hover:underline cursor-pointer"
+                type="button"
+                onClick={() => setIsLogin(!isLogin)}
+                className="text-indigo-400 hover:text-indigo-300 transition cursor-pointer"
               >
-                Login
+                {isLogin ? "Sign Up" : "Login"}
               </button>
             </p>
-          </div>
+
+            {/* Signup Success Message */}
+            {success && !isLogin && (
+              <p className="mt-4 text-green-400 font-medium text-center">
+                {success} Redirecting to OTP page...
+              </p>
+            )}
+          </form>
         </div>
       </div>
     </div>

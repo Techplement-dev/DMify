@@ -26,22 +26,26 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* Hide horizontal scrollbar */
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+/* global.css */
+
+/* Input + Button already exist */
+.auth-input {
+  @apply w-full px-4 py-3 rounded-lg bg-gray-800/80 border border-gray-700 
+         text-white placeholder-gray-400 focus:outline-none 
+         focus:ring-2 focus:ring-indigo-500 transition;
 }
 
-/* Needed for 3D flip animation */
-.rotate-y-0 {
-  transform: rotateY(0deg);
+.auth-button {
+  @apply w-full py-3 px-4 font-semibold rounded-lg shadow-md 
+         transition-all duration-300 transform hover:scale-105 cursor-pointer;
 }
-.rotate-y-180 {
-  transform: rotateY(180deg);
+
+/* ✅ New styles for messages */
+.auth-error {
+  @apply mt-4 text-red-400 font-medium text-center;
 }
-.backface-hidden {
-  backface-visibility: hidden;
+
+.auth-success {
+  @apply mt-4 text-green-400 font-medium text-center;
 }
+
