@@ -17,7 +17,7 @@ export default function AuthPage() {
 
   const router = useRouter();
 
-  // ✅ Handle auto-login via Supabase magic link
+  // Handle auto-login via Supabase magic link
   useEffect(() => {
     if (typeof window !== "undefined") {
       const hash = window.location.hash;
@@ -63,32 +63,26 @@ export default function AuthPage() {
   };
 
   // Handle login
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
+const handleLogin = async (e) => {
+  e.preventDefault();
+  setError("");
+  setSuccess("");
 
-    const data = await login(email, password);
+  const data = await login(email, password);
 
-    if (data.token) {
-      cookies.set("token", data.token, { secure: true, sameSite: "strict" });
-      localStorage.setItem("token", data.token);
+  if (data.token) {
+    cookies.set("token", data.token, { secure: true, sameSite: "strict" });
+    localStorage.setItem("token", data.token);
 
-      setSuccess("Login successful! Redirecting...");
-      setTimeout(() => {
-        router.push("/welcomePage");
-      }, 1500);
-    } else {
-      if (data.error?.includes("verify")) {
-        setError("Please verify your email with OTP before logging in.");
-        setTimeout(() => {
-          router.push("/verify-otp");
-        }, 2000);
-      } else {
-        setError(data.error || "Login failed");
-      }
-    }
-  };
+    setSuccess("Login successful! Redirecting...");
+    setTimeout(() => {
+      router.push("/welcomePage");
+    }, 1500);
+  } else {
+    setError(data.error || "Login failed");
+  }
+};
+
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black p-6">
@@ -155,6 +149,12 @@ export default function AuthPage() {
             {error && (
               <p className="mt-4 text-red-400 font-medium text-center">* {error}</p>
             )}
+             {/* Signup Success Message */}
+            {success && (
+              <p className="mt-4 text-green-400 font-medium text-center">
+                {success}
+              </p>
+            )}
 
             {/* Submit Button */}
             <button
@@ -177,13 +177,6 @@ export default function AuthPage() {
                 {isLogin ? "Sign Up" : "Login"}
               </button>
             </p>
-
-            {/* Signup Success Message */}
-            {success && !isLogin && (
-              <p className="mt-4 text-green-400 font-medium text-center">
-                {success} Redirecting to OTP page...
-              </p>
-            )}
           </form>
         </div>
       </div>
