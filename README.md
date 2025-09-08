@@ -21,14 +21,14 @@ src/
      ├─ home
      ├─ login/Signup 
      ├─ welcomePage
-     ├─ globals.css
-     ├─ layout.js        # Main layout wrapper
-     └─ page.js      # Default redirect to /login
      ├─ auth/
      ├─ login
      ├─ signup
      ├─ profile
-     ├─ campaign
+     ├─ campaign     
+     ├─ globals.css
+     ├─ layout.js        # Main layout wrapper
+     └─ page.js      # Default redirect to /login
   
 ---
 
