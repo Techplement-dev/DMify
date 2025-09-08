@@ -16,8 +16,8 @@ src/
  
      ├─ Header
      ├─ allposts
-     ├─ view-campaign
-     ├─ create-campaigns
+     ├─ view-campaigns
+     ├─ create-campaign
      ├─ home
      ├─ login/Signup 
      ├─ welcomePage
