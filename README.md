@@ -16,15 +16,20 @@ src/
  
      ├─ Header
      ├─ allposts
-     ├─ dashboard/[id]
+     ├─ view-campaign
+     ├─ create-campaigns
      ├─ home
      ├─ login/Signup 
      ├─ welcomePage
      ├─ globals.css
      ├─ layout.js        # Main layout wrapper
-     └─ page.js          # Default redirect to /login
-
-
+     └─ page.js      # Default redirect to /login
+     ├─ auth/
+     ├─ login
+     ├─ signup
+     ├─ profile
+     ├─ campaign
+  
 ---
 
 Prerequisites
