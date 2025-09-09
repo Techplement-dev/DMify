@@ -1,11 +1,12 @@
-import supabase from "src/lib/supabase";
+import supabase from "src/lib/supabase";          // frontend client (for signup)
+import supabaseAdmin from "src/lib/supabaseAdmin"; // backend admin client
 import { NextResponse } from "next/server";
 
 export async function POST(req) {
   try {
     const { email, password } = await req.json();
 
-    // password rules
+    // ✅ Password rules
     const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*]).{6,}$/;
     if (!passwordRegex.test(password)) {
       return NextResponse.json(
@@ -14,19 +15,27 @@ export async function POST(req) {
       );
     }
 
-    // signup with Supabase Auth
+    // ✅ Check if user already exists using admin client
+    const { data: users, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+    if (listError) {
+      return NextResponse.json({ error: "Error checking existing users" }, { status: 500 });
+    }
+
+    const userExists = users.users.some((u) => u.email === email);
+    if (userExists) {
+      return NextResponse.json(
+        { error: "User already exists, please login" },
+        { status: 400 }
+      );
+    }
+
+    // ✅ Signup new user with anon client
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
     });
 
     if (error) {
-      if (error.message.includes("already registered")) {
-        return NextResponse.json(
-          { error: "User already exists, please login" },
-          { status: 400 }
-        );
-      }
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
@@ -35,6 +44,9 @@ export async function POST(req) {
       user: data.user,
     });
   } catch (err) {
-    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Something went wrong" },
+      { status: 500 }
+    );
   }
 }

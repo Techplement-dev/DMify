@@ -9,11 +9,20 @@ import { IoMdMenu, IoMdClose } from "react-icons/io";
 export default function Header() {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  
+const handleLogout = async () => {
+  try {
+    const res = await fetch("/api/auth/logout", { method: "POST" });
+    if (res.ok) {
+      // Redirect & hard reload to ensure cookie cleared
+      window.location.href = "/login";
+    }
+  } catch (err) {
+    console.error("Logout failed:", err);
+  }
+};
 
-  const handleLogout = () => {
-    document.cookie = "token=; path=/; max-age=0"; // clear cookie
-    router.push("/login");
-  };
+
 
   return (
     <header className="bg-gradient-to-r from-gray-900 via-gray-800 to-black text-gray-200 shadow-lg p-4 flex justify-between items-center backdrop-blur-md relative">

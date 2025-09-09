@@ -3,7 +3,7 @@ import cookies from "js-cookie";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { login, signup } from "src/lib/api"; // Custom API functions
-import { FaEye, FaEyeSlash } from "react-icons/fa"; // Eye icons for password toggle
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);

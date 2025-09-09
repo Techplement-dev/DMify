@@ -23,7 +23,7 @@ export async function POST(req) {
 
     const token = data.session.access_token;
 
-    // ✅ Create response and set token as HTTP-only cookie
+    // Create response and set token as HTTP-only cookie
     const response = NextResponse.json({
       message: "Login successful",
       user: data.user,
