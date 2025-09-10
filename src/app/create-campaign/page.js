@@ -8,36 +8,38 @@ export default function CreateCampaignPage() {
   const [keyword, setKeyword] = useState("");
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState("");
-  const [saved, setSaved] = useState(false); // ✅ Track if campaign saved
+  const [saved, setSaved] = useState(false); // Track if campaign saved
 
   //  Handles form submission (when user clicks "Save Campaign")
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setStatus("Saving...");
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setStatus("Saving...");
 
-    try {
-      // 👉 For now: We call our Next.js mock API (/api/campaigns).
-     // 🔄 Later: Replace "/api/campaigns" with Snehal's real backend API URL (handles validation, DB save, and JSON response)
-      const res = await fetch("/api/campaigns", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ keyword, message }),
-      });
+  try {
+    // ⚠️ Temporary: Calling Next.js mock API to test frontend functionality
+    // ✅ This is just for now to check saving, status updates, and UI response.
+    // 🔄 Later: Replace "/api/campaigns" with Snehal's real backend API URL
+    //      which will handle validation, DB save, and JSON response.
+    const res = await fetch("/api/campaigns", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ keyword, message }),
+    });
 
-      const data = await res.json();
+    const data = await res.json();
 
-      if (res.ok) {
-        setStatus("✅ Campaign saved successfully!");
-        setKeyword("");
-        setMessage("");
-        setSaved(true); // ✅ Switch to success state
-      } else {
-        setStatus("❌ " + (data.error || "Something went wrong"));
-      }
-    } catch (err) {
-      setStatus("❌ Failed to save campaign");
+    if (res.ok) {
+      setStatus("Campaign saved successfully!");
+      setKeyword("");
+      setMessage("");
+      setSaved(true); // witch to success state
+    } else {
+      setStatus("❌ " + (data.error || "Something went wrong"));
     }
-  };
+  } catch (err) {
+    setStatus("❌ Failed to save campaign");
+  }
+};
 
 
   
