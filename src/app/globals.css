@@ -53,6 +53,3 @@ body {
   transform-style: preserve-3d;
 }
 
-.perspective {
-  perspective: 1000px;
-}

@@ -16,6 +16,8 @@ export default function CreateCampaignPage() {
     setStatus("Saving...");
 
     try {
+      // 👉 For now: We call our Next.js mock API (/api/campaigns).
+     // 🔄 Later: Replace "/api/campaigns" with Snehal's real backend API URL (handles validation, DB save, and JSON response)
       const res = await fetch("/api/campaigns", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -36,6 +38,9 @@ export default function CreateCampaignPage() {
       setStatus("❌ Failed to save campaign");
     }
   };
+
+
+  
 
   return (
     <>
