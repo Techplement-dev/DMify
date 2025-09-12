@@ -1,12 +1,12 @@
-import supabase from "src/lib/supabase";          // frontend client (for signup)
-import supabaseAdmin from "src/lib/supabaseAdmin"; // backend admin client
+import supabaseAdmin from "@/lib/supabaseAdmin";// backend admin client
+import supabase from "@/lib/supabase"; // frontend client (for signup)
 import { NextResponse } from "next/server";
 
 export async function POST(req) {
   try {
     const { email, password } = await req.json();
 
-    // ✅ Password rules
+    // Password rules
     const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*]).{6,}$/;
     if (!passwordRegex.test(password)) {
       return NextResponse.json(
@@ -15,7 +15,7 @@ export async function POST(req) {
       );
     }
 
-    // ✅ Check if user already exists using admin client
+    // Check if user already exists using admin client
     const { data: users, error: listError } = await supabaseAdmin.auth.admin.listUsers();
     if (listError) {
       return NextResponse.json({ error: "Error checking existing users" }, { status: 500 });
@@ -29,7 +29,7 @@ export async function POST(req) {
       );
     }
 
-    // ✅ Signup new user with anon client
+    // Signup new user with anon client
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
