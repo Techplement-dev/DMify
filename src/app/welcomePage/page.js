@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Header from "@/Header";
+import Header from "../Header";
 
 export default function WelcomePage() {
   const router = useRouter();
@@ -25,6 +25,7 @@ export default function WelcomePage() {
   return (
     <>
     <Header />
+
      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black p-6">
       <div className="w-full max-w-lg perspective">
         <div className="bg-gray-900/80 backdrop-blur-md p-10 rounded-2xl shadow-2xl transform transition-transform duration-500 hover:rotate-y-6">

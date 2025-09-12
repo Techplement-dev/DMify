@@ -2,8 +2,8 @@
 import cookies from "js-cookie";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { login, signup } from "src/lib/api"; // Custom API functions
 import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { signup, login } from "@/lib/api";
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
