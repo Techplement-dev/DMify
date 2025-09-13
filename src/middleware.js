@@ -1,31 +1,41 @@
 import { NextResponse } from "next/server";
 
+// List of public frontend routes
+const publicPaths = ["/login", "/signup", "/forgot-password"];
+
 export function middleware(req) {
-  const token = req.cookies.get("token")?.value;
+  // Get token from cookie or Authorization header
+  const token =
+    req.cookies.get("token")?.value ||
+    req.headers.get("authorization")?.split(" ")[1];
 
-  // Skip auth for API routes
-  if (req.nextUrl.pathname.startsWith("/api")) {
+  const pathname = req.nextUrl.pathname;
+
+  // Allow public frontend routes
+  if (publicPaths.some((path) => pathname.startsWith(path))) {
     return NextResponse.next();
   }
 
-  // Public frontend routes
-  const publicPaths = ["/login"];
-  if (publicPaths.some(path => req.nextUrl.pathname.startsWith(path))) {
+  // Allow API routes to handle auth themselves
+  if (pathname.startsWith("/api")) {
     return NextResponse.next();
   }
 
-  // If not logged in, redirect to login
+  // If token missing, redirect to login
   if (!token) {
-    const res = NextResponse.redirect(new URL("/login", req.url));
-    res.headers.set("Cache-Control", "no-store"); // prevent caching
+    const loginUrl = new URL("/login", req.url);
+    const res = NextResponse.redirect(loginUrl);
+    res.headers.set("Cache-Control", "no-store");
     return res;
   }
 
+  // All good, continue
   const res = NextResponse.next();
   res.headers.set("Cache-Control", "no-store");
   return res;
 }
 
+// Apply middleware to all frontend routes except Next.js internals
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
