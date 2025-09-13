@@ -3,9 +3,13 @@ import { NextResponse } from "next/server";
 export function middleware(req) {
   const token = req.cookies.get("token")?.value;
 
-  // Public routes
-  const publicPaths = ["/login", "/api/auth/signup", "/api/auth/login", "/api/auth/logout"];
+  // Skip auth for API routes
+  if (req.nextUrl.pathname.startsWith("/api")) {
+    return NextResponse.next();
+  }
 
+  // Public frontend routes
+  const publicPaths = ["/login"];
   if (publicPaths.some(path => req.nextUrl.pathname.startsWith(path))) {
     return NextResponse.next();
   }
@@ -18,7 +22,7 @@ export function middleware(req) {
   }
 
   const res = NextResponse.next();
-  res.headers.set("Cache-Control", "no-store"); // prevent caching
+  res.headers.set("Cache-Control", "no-store");
   return res;
 }
 
