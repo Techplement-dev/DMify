@@ -14,6 +14,8 @@ export async function GET(req) {
   const mode = searchParams.get("hub.mode");
   const token = searchParams.get("hub.verify_token");
   const challenge = searchParams.get("hub.challenge");
+  console.log("Query params:", Object.fromEntries(new URL(req.url).searchParams));
+
 
   if (mode === "subscribe" && token === process.env.INSTAGRAM_VERIFY_TOKEN) {
     console.log("Webhook verified");
@@ -34,13 +36,13 @@ export async function POST(req) {
 
     const entry = body.entry?.[0];
     const change = entry?.changes?.[0]?.value;
+    if (change && change.id) {
+  const commentId = change.id;  // Instagram gives "id" for the comment
+  const commenterId = change.from?.id;
+  const commenterName = change.from?.username || "Unknown";
+  const commentText = change.text;
+  const mediaId = change.media?.id; // nested inside media object
 
-    if (change && change.comment_id) {
-      const commentId = change.comment_id;
-      const commenterId = change.from?.id;
-      const commenterName = change.from?.username || "Unknown";
-      const commentText = change.text;
-      const mediaId = change.media_id;
 
       console.log(`Processing comment: "${commentText}" (ID: ${commentId}) from ${commenterName}`);
 
@@ -104,30 +106,42 @@ export async function POST(req) {
       console.log("Inserted comment into DB:", commentInsert);
 
       // Send auto-DM if campaign matched
-      if (matchedCampaign) {
-        const sendDM = await fetch(
-          `https://graph.facebook.com/v21.0/me/messages?access_token=${process.env.INSTAGRAM_ACCESS_TOKEN}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              recipient: { id: commenterId },
-              message: { text: matchedCampaign.message_template },
-            }),
-          }
-        );
+     // Send auto-DM if campaign matched
+            // --- Send auto-DM if campaign matched ---
+if (matchedCampaign) {
+  try {
+    // Use IG Business Account ID instead of 'me'
+    const IG_BUSINESS_ACCOUNT_ID = process.env.IG_BUSINESS_ACCOUNT_ID;
 
-        const dmResult = await sendDM.json();
-        console.log("Auto DM sent:", dmResult);
-
-        // Update comment as replied
-        await supabase
-          .from("comments")
-          .update({ replied: true, replied_at: new Date() })
-          .eq("id", commentInsert.id);
-
-        console.log("Comment updated as replied");
+    const sendDM = await fetch(
+      `https://graph.facebook.com/v17.0/${IG_BUSINESS_ACCOUNT_ID}/messages?access_token=${process.env.INSTAGRAM_ACCESS_TOKEN}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recipient: { id: commenterId },
+          message: { text: matchedCampaign.message_template },
+        }),
       }
+    );
+
+    // Log HTTP status and full response body
+    console.log("Auto DM response status:", sendDM.status);
+    const dmResult = await sendDM.json();
+    console.log("Auto DM response body:", dmResult);
+
+    // Update comment as replied
+    await supabase
+      .from("comments")
+      .update({ replied: true, replied_at: new Date() })
+      .eq("id", commentInsert.id);
+
+    console.log("Comment updated as replied");
+  } catch (dmError) {
+    console.error("Auto DM error:", dmError);
+  }
+}
+
     }
 
     return NextResponse.json({ success: true });

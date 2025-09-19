@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 // List of public frontend routes
-const publicPaths = ["/login", "/signup", "/forgot-password"];
+const publicPaths = ["/login", "/signup", "/forgot-password", "privacy-policy"];
 
 export function middleware(req) {
   // Get token from cookie or Authorization header

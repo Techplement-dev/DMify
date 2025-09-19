@@ -41,19 +41,11 @@ export default function WelcomePage() {
           {/* Buttons */}
           <div className="space-y-4">
             <button
-              onClick={() => router.push("/create-campaign")}
+              onClick={() => router.push("/create-view-campaign")}
               className="w-full py-3 px-4 rounded-lg font-semibold text-white bg-indigo-600 hover:bg-indigo-700 
               shadow-lg hover:shadow-indigo-500/40 transform transition-all duration-300 hover:scale-105 cursor-pointer"
             >
             Create Campaign
-            </button>
-
-            <button
-              onClick={() => router.push("/view-campaigns")}
-              className="w-full py-3 px-4 rounded-lg font-semibold text-white bg-gray-700 hover:bg-gray-600 
-              shadow-lg hover:shadow-gray-500/40 transform transition-all duration-300 hover:scale-105 cursor-pointer"
-            >
-            View Campaigns
             </button>
           </div>
         </div>

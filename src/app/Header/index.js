@@ -1,27 +1,30 @@
-
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { IoMdMenu, IoMdClose } from "react-icons/io";
 
 export default function Header() {
-  const router = useRouter();
+  const pathname = usePathname(); // <- usePathname instead of router.pathname
   const [menuOpen, setMenuOpen] = useState(false);
-  
-const handleLogout = async () => {
-  try {
-    const res = await fetch("/api/auth/logout", { method: "POST" });
-    if (res.ok) {
-      // Redirect & hard reload to ensure cookie cleared
-      window.location.href = "/login";
-    }
-  } catch (err) {
-    console.error("Logout failed:", err);
-  }
-};
 
+  const handleLogout = async () => {
+    try {
+      const res = await fetch("/api/auth/logout", { method: "POST" });
+      if (res.ok) {
+        window.location.href = "/login";
+      }
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
+  };
+
+  const navLinks = [
+  { href: "/welcomePage", label: "Home" },
+  { href: "/create-view-campaign", label: "Create Campaign" },
+  { href: "/analytics", label: "Analytics" },
+];
 
 
   return (
@@ -32,24 +35,17 @@ const handleLogout = async () => {
 
       {/* Desktop Navigation */}
       <nav className="hidden md:flex gap-6 text-lg">
-        <Link
-          href="/welcomePage"
-          className="hover:text-indigo-400 font-semibold transition-colors duration-300"
-        >
-          Home
-        </Link>
-        <Link
-          href="/create-campaign"
-          className="hover:text-indigo-400 font-semibold transition-colors duration-300"
-        >
-          Create Campaign
-        </Link>
-        <Link
-          href="/view-campaigns"
-          className="hover:text-indigo-400 font-semibold transition-colors duration-300"
-        >
-          View Campaigns
-        </Link>
+        {navLinks.map((link) => (
+          <Link
+            key={link.href}
+            href={link.href}
+            className={`font-semibold transition-colors duration-300 hover:text-indigo-400 ${
+              pathname === link.href ? "text-indigo-400 underline" : ""
+            }`}
+          >
+            {link.label}
+          </Link>
+        ))}
       </nav>
 
       {/* Desktop Logout */}
@@ -71,27 +67,18 @@ const handleLogout = async () => {
       {/* Mobile Menu */}
       {menuOpen && (
         <div className="absolute top-full left-0 w-full bg-gray-900 text-white shadow-lg flex flex-col items-center py-6 space-y-4 md:hidden z-50">
-          <Link
-            href="/welcomePage"
-            className="hover:text-indigo-400 font-semibold transition-colors duration-300"
-            onClick={() => setMenuOpen(false)}
-          >
-            Home
-          </Link>
-          <Link
-            href="/create-campaign"
-            className="hover:text-indigo-400 font-semibold transition-colors duration-300"
-            onClick={() => setMenuOpen(false)}
-          >
-            Create Campaign
-          </Link>
-          <Link
-            href="/view-campaigns"
-            className="hover:text-indigo-400 font-semibold transition-colors duration-300"
-            onClick={() => setMenuOpen(false)}
-          >
-            View Campaigns
-          </Link>
+          {navLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`font-semibold transition-colors duration-300 hover:text-indigo-400 ${
+                pathname === link.href ? "text-indigo-400 underline" : ""
+              }`}
+              onClick={() => setMenuOpen(false)}
+            >
+              {link.label}
+            </Link>
+          ))}
           <button
             onClick={() => {
               setMenuOpen(false);
