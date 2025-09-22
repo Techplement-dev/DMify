@@ -1,31 +1,45 @@
-//CampaignId/route.js → Summary stats (total, sent, failed, engagement, campaignName, message).
-
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import jwt from "jsonwebtoken";
 
+// Initialize Supabase client
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY 
+  process.env.SUPABASE_URL || (() => { throw new Error("SUPABASE_URL is not defined"); })(),
+  process.env.SUPABASE_SERVICE_ROLE_KEY || (() => { throw new Error("SUPABASE_SERVICE_ROLE_KEY is not defined"); })()
 );
 
-export async function GET(request) {
+function parseCookies(cookieHeader) {
+  if (!cookieHeader) return {};
+  return Object.fromEntries(
+    cookieHeader.split("; ").map((cookie) => {
+      const [name, ...rest] = cookie.split("=");
+      return [name, rest.join("=")];
+    })
+  );
+}
+
+export async function GET(req) {
   try {
+    // 1. Read token from cookies
+    const cookieHeader = req.headers.get("cookie");
+    const cookies = parseCookies(cookieHeader);
+    const token = cookies.token;
 
-    // 1. Get the current logged-in user from the request
-
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized: Token missing" }, { status: 401 });
     }
 
-    const userId = user.id;
+    const decoded = jwt.decode(token);
+    if (!decoded || !decoded.sub) {
+      return NextResponse.json({ error: "Unauthorized: Invalid token" }, { status: 401 });
+    }
 
-    // 2. Fetch all campaigns for this user
+    const userId = decoded.sub;
 
+    // 2. Fetch campaigns for this user
     const { data: campaigns, error: campaignsError } = await supabase
       .from("campaigns")
-      .select("id, campaign_name, message_template, created_at")
+      .select("id, campaign_name, message_template")
       .eq("user_id", userId);
 
     if (campaignsError) {
@@ -33,61 +47,42 @@ export async function GET(request) {
       return NextResponse.json({ error: "Failed to fetch campaigns" }, { status: 500 });
     }
 
-    // 3. Fetch message logs linked to those campaigns
-
-    const campaignIds = campaigns.map(c => c.id);
-
-    let logs = [];
-    if (campaignIds.length > 0) {
-      const { data: messageLogs, error: logsError } = await supabase
+    // 3. For each campaign, fetch logs and calculate stats
+    const results = [];
+    for (let campaign of campaigns) {
+      const { data: logs, error: logsError } = await supabase
         .from("message_logs")
-        .select("campaign_id, status")
-        .in("campaign_id", campaignIds);
+        .select("status")
+        .eq("campaign_id", campaign.id)
+        .eq("user_id", userId);
 
       if (logsError) {
         console.error("Error fetching logs:", logsError);
-        return NextResponse.json({ error: "Failed to fetch logs" }, { status: 500 });
+        continue;
       }
 
-      logs = messageLogs;
-    }
+      const totalDMs = logs.length;
+      const sentDMs = logs.filter((l) => l.status === "sent").length;
+      const failedDMs = logs.filter((l) => l.status === "failed").length;
 
-    // 4. Build analytics response per campaign
-
-    const analytics = campaigns.map(campaign => {
-      const campaignLogs = logs.filter(l => l.campaign_id === campaign.id);
-
-      const totalDMs = campaignLogs.length;
-      const sentDMs = campaignLogs.filter(l => l.status === "sent").length;
-      const failedDMs = campaignLogs.filter(l => l.status === "failed").length;
-
-      // Engagement % = sent / total (if any DMs exist)
-
+      // Engagement rate = (sent / total) * 100
       const engagementRate = totalDMs > 0 ? ((sentDMs / totalDMs) * 100).toFixed(2) : 0;
 
-      return {
+      results.push({
         campaignId: campaign.id,
         campaignName: campaign.campaign_name,
         campaignMessage: campaign.message_template,
-        createdAt: campaign.created_at,
         totalDMs,
         sentDMs,
         failedDMs,
-        engagementRate: `${engagementRate}%`
-      };
-    });
+        engagementRate,
+      });
+    }
 
-    // 5. Return analytics JSON
-    
-    return NextResponse.json({ analytics });
+    // 4. Return results
+    return NextResponse.json(results);
   } catch (error) {
-    console.error("Unexpected error:", error);
+    console.error("Analytics API error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
-
-
-
-
-//GET
-//http://localhost:3000/api/analytics/CampaignId?userId=3e0dc382-21f3-4016-8466-0d02a7fcb5c0

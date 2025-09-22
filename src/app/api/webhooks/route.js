@@ -27,22 +27,21 @@ export async function GET(req) {
 }
 
 /* 2. HANDLE INCOMING COMMENTS (POST) */
+/* 2. HANDLE INCOMING COMMENTS (POST) */
 export async function POST(req) {
   try {
     const body = await req.json();
-
-    // Log the full payload for debugging
     console.log("Full webhook payload received:\n", JSON.stringify(body, null, 2));
 
     const entry = body.entry?.[0];
     const change = entry?.changes?.[0]?.value;
-    if (change && change.id) {
-  const commentId = change.id;  // Instagram gives "id" for the comment
-  const commenterId = change.from?.id;
-  const commenterName = change.from?.username || "Unknown";
-  const commentText = change.text;
-  const mediaId = change.media?.id; // nested inside media object
 
+    if (change && change.id) {
+      const commentId = change.id;
+      const commenterId = change.from?.id;
+      const commenterName = change.from?.username || "Unknown";
+      const commentText = change.text;
+      const mediaId = change.media?.id;
 
       console.log(`Processing comment: "${commentText}" (ID: ${commentId}) from ${commenterName}`);
 
@@ -65,7 +64,6 @@ export async function POST(req) {
         .eq("status", "active");
 
       if (campaignError) console.error("Error fetching campaigns:", campaignError);
-
       console.log("Active campaigns:", campaigns?.map(c => c.campaign_name));
 
       // Check for keyword match
@@ -74,12 +72,8 @@ export async function POST(req) {
         if (commentText.toLowerCase().includes(c.campaign_name.toLowerCase())) {
           matchedCampaign = c;
           console.log(`Keyword matched: "${c.campaign_name}" in comment "${commentText}"`);
-          break; // Stop at first match
+          break;
         }
-      }
-
-      if (!matchedCampaign) {
-        console.log("No campaign keywords matched for this comment.");
       }
 
       // Insert comment
@@ -94,6 +88,7 @@ export async function POST(req) {
           comment_text: commentText,
           media_id: mediaId,
           replied: false,
+          dm_status: null,
         }])
         .select()
         .single();
@@ -105,43 +100,60 @@ export async function POST(req) {
 
       console.log("Inserted comment into DB:", commentInsert);
 
-      // Send auto-DM if campaign matched
-     // Send auto-DM if campaign matched
-            // --- Send auto-DM if campaign matched ---
-if (matchedCampaign) {
-  try {
-    // Use IG Business Account ID instead of 'me'
-    const IG_BUSINESS_ACCOUNT_ID = process.env.IG_BUSINESS_ACCOUNT_ID;
+      // Attempt Auto-DM if campaign matched
+      if (matchedCampaign) {
+        let dmSuccess = false;
 
-    const sendDM = await fetch(
-      `https://graph.facebook.com/v17.0/${IG_BUSINESS_ACCOUNT_ID}/messages?access_token=${process.env.INSTAGRAM_ACCESS_TOKEN}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          recipient: { id: commenterId },
-          message: { text: matchedCampaign.message_template },
-        }),
+        try {
+          const IG_BUSINESS_ACCOUNT_ID = process.env.IG_BUSINESS_ACCOUNT_ID;
+
+          const sendDM = await fetch(
+            `https://graph.facebook.com/v17.0/${IG_BUSINESS_ACCOUNT_ID}/messages?access_token=${process.env.INSTAGRAM_ACCESS_TOKEN}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                recipient: { id: commenterId },
+                message: { text: matchedCampaign.message_template },
+              }),
+            }
+          );
+
+          const dmResult = await sendDM.json();
+          console.log("Auto DM response status:", sendDM.status);
+          console.log("Auto DM response body:", dmResult);
+
+          if (sendDM.ok) dmSuccess = true;
+        } catch (dmError) {
+          console.error("Auto DM error:", dmError);
+        }
+
+        // If DM failed, fallback to comment reply
+        if (!dmSuccess) {
+          try {
+            const sendCommentReply = await fetch(
+              `https://graph.facebook.com/v17.0/${commentId}/replies?access_token=${process.env.INSTAGRAM_ACCESS_TOKEN}`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: matchedCampaign.message_template }),
+              }
+            );
+            const replyResult = await sendCommentReply.json();
+            console.log("Fallback comment reply result:", replyResult);
+          } catch (replyError) {
+            console.error("Fallback comment reply failed:", replyError);
+          }
+        }
+
+        // Update comment with DM status
+        await supabase
+          .from("comments")
+          .update({ replied: true, replied_at: new Date(), dm_status: dmSuccess ? "success" : "failed" })
+          .eq("id", commentInsert.id);
+
+        console.log("Comment updated as replied with DM status");
       }
-    );
-
-    // Log HTTP status and full response body
-    console.log("Auto DM response status:", sendDM.status);
-    const dmResult = await sendDM.json();
-    console.log("Auto DM response body:", dmResult);
-
-    // Update comment as replied
-    await supabase
-      .from("comments")
-      .update({ replied: true, replied_at: new Date() })
-      .eq("id", commentInsert.id);
-
-    console.log("Comment updated as replied");
-  } catch (dmError) {
-    console.error("Auto DM error:", dmError);
-  }
-}
-
     }
 
     return NextResponse.json({ success: true });

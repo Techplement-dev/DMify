@@ -22,13 +22,13 @@ export default function Header() {
 
   const navLinks = [
   { href: "/welcomePage", label: "Home" },
-  { href: "/create-view-campaign", label: "Create Campaign" },
+  { href: "/instagram", label: "Instagram" },
   { href: "/analytics", label: "Analytics" },
 ];
 
 
   return (
-    <header className="bg-gradient-to-r from-gray-900 via-gray-800 to-black text-gray-200 shadow-lg p-4 flex justify-between items-center backdrop-blur-md relative">
+    <header className="bg-gradient-to-r from-gray-900 via-gray-800 to-black text-gray-200 shadow-lg p-4 flex justify-between items-center backdrop-blur-md relative z-50">
       <div className="text-2xl font-extrabold tracking-wide text-white hover:scale-105 transform transition">
         <Link href="/welcomePage">Auto DM</Link>
       </div>
