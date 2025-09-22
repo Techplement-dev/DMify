@@ -5,9 +5,10 @@ import jwt from "jsonwebtoken";
 // Initialize Supabase client using environment variables
 const supabase = createClient(
   process.env.SUPABASE_URL || (() => { throw new Error("SUPABASE_URL is not defined"); })(),
-  process.env.SUPABASE_SERVICE_ROLE_KEY || (() => { throw new Error("SUPABASE_SERVICE_ROLE_KEY is not defined"); })() // only use in server environment
+  process.env.SUPABASE_SERVICE_ROLE_KEY || (() => { throw new Error("SUPABASE_SERVICE_ROLE_KEY is not defined"); })()
 );
 
+// Helper: parse cookies
 function parseCookies(cookieHeader) {
   if (!cookieHeader) return {};
   return Object.fromEntries(
@@ -25,15 +26,10 @@ export async function GET(req) {
     const cookies = parseCookies(cookieHeader);
     const token = cookies.token;
 
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized: Token missing" }, { status: 401 });
-    }
+    if (!token) return NextResponse.json({ error: "Unauthorized: Token missing" }, { status: 401 });
 
     const decoded = jwt.decode(token);
-
-    if (!decoded || !decoded.sub) {
-      return NextResponse.json({ error: "Unauthorized: Invalid token" }, { status: 401 });
-    }
+    if (!decoded || !decoded.sub) return NextResponse.json({ error: "Unauthorized: Invalid token" }, { status: 401 });
 
     const userId = decoded.sub;
 
@@ -42,9 +38,7 @@ export async function GET(req) {
       .select("*")
       .eq("user_id", userId);
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     return NextResponse.json(data);
   } catch (error) {
@@ -53,47 +47,36 @@ export async function GET(req) {
   }
 }
 
-// POST: Create a new campaign for logged-in user
+// POST: Create a new campaign
 export async function POST(req) {
   try {
     const cookieHeader = req.headers.get("cookie");
     const cookies = parseCookies(cookieHeader);
     const token = cookies.token;
 
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized: Token missing" }, { status: 401 });
-    }
+    if (!token) return NextResponse.json({ error: "Unauthorized: Token missing" }, { status: 401 });
 
     const decoded = jwt.decode(token);
-
-    if (!decoded || !decoded.sub) {
-      return NextResponse.json({ error: "Unauthorized: Invalid token" }, { status: 401 });
-    }
+    if (!decoded || !decoded.sub) return NextResponse.json({ error: "Unauthorized: Invalid token" }, { status: 401 });
 
     const userId = decoded.sub;
 
     const body = await req.json();
     const { keyword, message } = body;
 
-    if (!keyword || !message) {
-      return NextResponse.json({ error: "Keyword and message are required" }, { status: 400 });
-    }
+    if (!keyword || !message) return NextResponse.json({ error: "Keyword and message are required" }, { status: 400 });
 
     const { data, error } = await supabase
       .from("campaigns")
-      .insert([
-        {
-          user_id: userId,
-          campaign_name: keyword,         // ✅ match to campaign_name column
-          message_template: message,      // ✅ match to message_template column
-          status: "active",
-        },
-      ])
+      .insert([{
+        user_id: userId,
+        campaign_name: keyword,
+        message_template: message,
+        status: "active",
+      }])
       .select();
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     return NextResponse.json({ message: "Campaign created successfully", data });
   } catch (error) {
@@ -102,42 +85,32 @@ export async function POST(req) {
   }
 }
 
-// DELETE: Delete a campaign by ID for the logged-in user
+// DELETE: Delete a campaign by ID
 export async function DELETE(req) {
   try {
     const cookieHeader = req.headers.get("cookie");
     const cookies = parseCookies(cookieHeader);
     const token = cookies.token;
 
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized: Token missing" }, { status: 401 });
-    }
+    if (!token) return NextResponse.json({ error: "Unauthorized: Token missing" }, { status: 401 });
 
     const decoded = jwt.decode(token);
-
-    if (!decoded || !decoded.sub) {
-      return NextResponse.json({ error: "Unauthorized: Invalid token" }, { status: 401 });
-    }
+    if (!decoded || !decoded.sub) return NextResponse.json({ error: "Unauthorized: Invalid token" }, { status: 401 });
 
     const userId = decoded.sub;
 
     const body = await req.json();
     const { id } = body;
 
-    if (!id) {
-      return NextResponse.json({ error: "Campaign ID is required" }, { status: 400 });
-    }
+    if (!id) return NextResponse.json({ error: "Campaign ID is required" }, { status: 400 });
 
-    // Delete campaign where user_id matches and id matches
     const { error } = await supabase
       .from("campaigns")
       .delete()
       .eq("id", id)
       .eq("user_id", userId);
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     return NextResponse.json({ message: "Campaign deleted successfully" });
   } catch (error) {
@@ -146,3 +119,42 @@ export async function DELETE(req) {
   }
 }
 
+// PATCH: Update campaign (edit or toggle status)
+export async function PATCH(req) {
+  try {
+    const cookieHeader = req.headers.get("cookie");
+    const cookies = parseCookies(cookieHeader);
+    const token = cookies.token;
+
+    if (!token) return NextResponse.json({ error: "Unauthorized: Token missing" }, { status: 401 });
+
+    const decoded = jwt.decode(token);
+    if (!decoded || !decoded.sub) return NextResponse.json({ error: "Unauthorized: Invalid token" }, { status: 401 });
+
+    const userId = decoded.sub;
+
+    const body = await req.json();
+    const { id, keyword, message, status } = body;
+
+    if (!id) return NextResponse.json({ error: "Campaign ID is required" }, { status: 400 });
+
+    const updateData = {};
+    if (keyword) updateData.campaign_name = keyword;
+    if (message) updateData.message_template = message;
+    if (status) updateData.status = status;
+
+    const { data, error } = await supabase
+      .from("campaigns")
+      .update(updateData)
+      .eq("id", id)
+      .eq("user_id", userId)
+      .select();
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    return NextResponse.json({ message: "Campaign updated successfully", data });
+  } catch (error) {
+    console.error("PATCH /campaigns error:", error);
+    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
+  }
+}
