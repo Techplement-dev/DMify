@@ -19,33 +19,69 @@ function parseCookies(cookieHeader) {
   );
 }
 
-// GET: Fetch campaigns for logged-in user
+// GET: Fetch campaigns for logged-in user (all or by keyword)
 export async function GET(req) {
   try {
+    const { searchParams } = new URL(req.url);
+    const keyword = searchParams.get("keyword");
+
     const cookieHeader = req.headers.get("cookie");
     const cookies = parseCookies(cookieHeader);
     const token = cookies.token;
 
-    if (!token) return NextResponse.json({ error: "Unauthorized: Token missing" }, { status: 401 });
+    if (!token) {
+      return NextResponse.json(
+        { error: "Unauthorized: Token missing" },
+        { status: 401 }
+      );
+    }
 
     const decoded = jwt.decode(token);
-    if (!decoded || !decoded.sub) return NextResponse.json({ error: "Unauthorized: Invalid token" }, { status: 401 });
+    if (!decoded || !decoded.sub) {
+      return NextResponse.json(
+        { error: "Unauthorized: Invalid token" },
+        { status: 401 }
+      );
+    }
 
     const userId = decoded.sub;
 
+    // Case 1: Keyword provided → existence check
+    if (keyword) {
+      const { data, error } = await supabase
+        .from("campaigns")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("campaign_name", keyword)
+        .maybeSingle(); // returns null if not found
+
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+
+      return NextResponse.json({ exists: !!data });
+    }
+
+    // Case 2: No keyword → fetch all campaigns
     const { data, error } = await supabase
       .from("campaigns")
       .select("*")
       .eq("user_id", userId);
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
 
     return NextResponse.json(data);
   } catch (error) {
     console.error("GET /campaigns error:", error);
-    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Something went wrong" },
+      { status: 500 }
+    );
   }
 }
+
 
 // POST: Create a new campaign
 export async function POST(req) {
@@ -64,8 +100,29 @@ export async function POST(req) {
     const body = await req.json();
     const { keyword, message } = body;
 
-    if (!keyword || !message) return NextResponse.json({ error: "Keyword and message are required" }, { status: 400 });
+    if (!keyword || !message) {
+      return NextResponse.json({ error: "Keyword and message are required" }, { status: 400 });
+    }
 
+    // Step 1: Check if campaign already exists
+    const { data: existingCampaign, error: fetchError } = await supabase
+      .from("campaigns")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("campaign_name", keyword)
+      .single();
+
+    if (fetchError && fetchError.code !== "PGRST116") {
+      // any error other than "no rows found"
+      return NextResponse.json({ error: fetchError.message }, { status: 500 });
+    }
+
+    if (existingCampaign) {
+      // Step 2: Return message if already exists
+      return NextResponse.json({ message: "Campaign already exists" }, { status: 400 });
+    }
+
+    // Step 3: Insert new campaign if not exists
     const { data, error } = await supabase
       .from("campaigns")
       .insert([{

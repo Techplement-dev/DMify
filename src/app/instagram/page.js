@@ -77,12 +77,10 @@ export default function InstagramPosts() {
     );
   };
 
-  console.log(posts)
-
   return (
     <>
       <Header />
-      <div className="flex z-0 flex-col gap-10 p-6 min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
+      <div className="flex z-0 flex-col md:pb-8 pb-25 gap-10 p-6 min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
         <div className="flex justify-center p-6 w-full">
           <div className="w-full max-w-5xl space-y-10">
             <div className="bg-gray-900/80 backdrop-blur-md p-8 rounded-2xl shadow-2xl text-center space-y-4">
@@ -115,7 +113,7 @@ export default function InstagramPosts() {
 
             {!loading && posts.length > 0 ? (
               <>
-              <p className="text-center text-gray-400 mb-4">Select a post to enable AutoDM.</p>
+              <p className="text-center text-gray-400 mb-8">Select a post to enable AutoDM.</p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 cursor-pointer">
                 {posts.map((post) => (
                   <div
