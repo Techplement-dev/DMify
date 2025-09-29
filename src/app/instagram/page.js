@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import Header from "../Header";
-import { useRouter } from "next/navigation"; // ✅ Import useRouter
+import { useRouter } from "next/navigation"; // Import useRouter
 
 export default function InstagramPosts() {
   const [posts, setPosts] = useState([]);
@@ -11,7 +10,7 @@ export default function InstagramPosts() {
   const [error, setError] = useState("");
   const [user, setUser] = useState(null);
 
-  const router = useRouter(); // ✅ Initialize router
+  const router = useRouter(); // Initialize router
 
   // Fetch posts from API route
   const fetchPosts = async () => {

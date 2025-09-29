@@ -82,7 +82,6 @@ export async function GET(req) {
   }
 }
 
-
 // POST: Create a new campaign
 export async function POST(req) {
   try {

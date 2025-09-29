@@ -7,7 +7,7 @@ export default function WelcomePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
 
-  // ⏳ Fake loading effect (you can replace with real auth check later)
+  // Fake loading effect (you can replace with real auth check later)
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 1200); // 1.2s
     return () => clearTimeout(timer);
