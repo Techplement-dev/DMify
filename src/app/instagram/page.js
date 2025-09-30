@@ -122,7 +122,7 @@ export default function InstagramPosts() {
                   >
                     {/* Post Image */}
                     {post.media_type === "IMAGE" && (
-                      <image
+                      <img
                         src={post.media_url}
                         alt="Instagram Post"
                         className="w-full h-64 object-cover"

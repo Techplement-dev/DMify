@@ -102,7 +102,7 @@ const fetchPost = async () => {
             {/* Left side - Post details */}
             <div className="bg-gray-900/80 rounded-2xl p-6 shadow-2xl">
               {post.media_type === "IMAGE" && (
-                <image
+                <img
                   src={post.media_url}
                   alt="Instagram Post"
                   className="w-full h-80 object-cover rounded-lg mb-4"

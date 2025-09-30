@@ -1,7 +1,7 @@
 // src/app/api/instagram/posts/route.js
 
 export async function GET() {
-  const IG_BUSINESS_ACCOUNT_ID = "17841476675587516"; // your IG Business Account ID
+  const IG_BUSINESS_ACCOUNT_ID = process.env.IG_BUSINESS_ACCOUNT_ID;
   const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
 
   try {
