@@ -97,10 +97,13 @@ export default function AnalyticsPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id: editingCampaign.id,
-          keyword: editName,
-          message: editMessage,
-        }),
+  id: editingCampaign.id,
+  keyword: editName,
+  message: editMessage,
+  button_text: editingCampaign?.button_text || "",
+  button_url: editingCampaign?.button_url || ""
+}),
+
       });
 
       if (res.ok) {
@@ -217,46 +220,74 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Edit Modal */}
-      {editModalOpen && (
-        <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50">
-          <div className="bg-gray-900 rounded-2xl p-6 w-96 shadow-2xl">
-            <h3 className="text-xl font-bold text-white mb-4">Edit Campaign</h3>
-            <form onSubmit={handleEditSubmit} className="space-y-4">
-              <input
-                type="text"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white"
-                placeholder="Campaign Name"
-                required
-              />
-              <textarea
-                value={editMessage}
-                onChange={(e) => setEditMessage(e.target.value)}
-                className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white"
-                placeholder="Message Template"
-                rows={4}
-                required
-              />
-              <div className="flex justify-end gap-3 mt-2">
-                <button
-                  type="button"
-                  onClick={() => setEditModalOpen(false)}
-                  className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white"
-                >
-                  Save
-                </button>
-              </div>
-            </form>
-          </div>
+{editModalOpen && (
+  <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50">
+    <div className="bg-gray-900 rounded-2xl p-6 w-[500px] shadow-2xl">
+      <h3 className="text-xl font-bold text-white mb-4">Edit Campaign</h3>
+      <form onSubmit={handleEditSubmit} className="space-y-4">
+        {/* Campaign Name */}
+        <input
+          type="text"
+          value={editName}
+          onChange={(e) => setEditName(e.target.value)}
+          className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white"
+          placeholder="Campaign Name"
+          required
+        />
+
+        {/* Message Template */}
+        <textarea
+          value={editMessage}
+          onChange={(e) => setEditMessage(e.target.value)}
+          className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white"
+          placeholder="Message Template"
+          rows={4}
+          required
+        />
+
+        {/* Button Text */}
+        <input
+          type="text"
+          value={editingCampaign?.button_text || ""}
+          onChange={(e) =>
+            setEditingCampaign((prev) => ({ ...prev, button_text: e.target.value }))
+          }
+          className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white"
+          placeholder="Button Text (optional)"
+        />
+
+        {/* Button URL */}
+        <input
+          type="url"
+          value={editingCampaign?.button_url || ""}
+          onChange={(e) =>
+            setEditingCampaign((prev) => ({ ...prev, button_url: e.target.value }))
+          }
+          className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white"
+          placeholder="Button URL (optional)"
+        />
+
+        <div className="flex justify-end gap-3 mt-2">
+          <button
+            type="button"
+            onClick={() => setEditModalOpen(false)}
+            className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white"
+          >
+            Save
+          </button>
         </div>
-      )}
+      </form>
+    </div>
+  </div>
+)}
+
+     
     </>
   );
 }

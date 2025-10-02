@@ -9,92 +9,90 @@ export default function InstagramPostDetail() {
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [keyword, setKeyword] = useState("");
-  const [message, setMessage] = useState("");
+
+  // Campaign fields (align with schema)
+  const [campaignName, setCampaignName] = useState("");
+  const [messageTemplate, setMessageTemplate] = useState("");
+  const [buttonText, setButtonText] = useState("");
+  const [buttonUrl, setButtonUrl] = useState("");
+
   const [status, setStatus] = useState("");
-  const [showForm, setShowForm] = useState(false); // 👈 controls form visibility
+  const [showForm, setShowForm] = useState(false);
 
-// Fetch single post details
-const fetchPost = async () => {
-  try {
-    const res = await fetch(`/api/instagram/post/${id}`);
-    const data = await res.json();
+  // Fetch post details
+  const fetchPost = async () => {
+    try {
+      const res = await fetch(`/api/instagram/post/${id}`);
+      const data = await res.json();
 
-    if (res.ok) {
-      const singlePost = data; // backend already returns single object
-      setPost(singlePost);
+      if (res.ok) {
+        const singlePost = data;
+        setPost(singlePost);
 
-      // Extract keyword inside quotes ("link", “link”, etc.)
-      if (singlePost?.caption) {
-        const captionText = singlePost.caption;
+        // Pre-fill campaign name from caption if available
+        if (singlePost?.caption) {
+          const captionText = singlePost.caption;
 
-        const match = captionText.match(/["“”']([^"“”']+)["“”']/);
-        if (match) setKeyword(match[1]);
+          // Try extracting keyword in quotes for campaign name
+          const match = captionText.match(/["“”']([^"“”']+)["“”']/);
+          if (match) setCampaignName(match[1]);
 
-        // Extract http/https link
-        const linkMatch = captionText.match(/https?:\/\/\S+/);
-        if (linkMatch) {
-          setMessage(
-            `Here’s the link: ${linkMatch[0]}`
-          );
-        } else {
-          setMessage("");
+          // If caption contains a link → preload into button URL
+          const linkMatch = captionText.match(/https?:\/\/\S+/);
+          if (linkMatch) {
+            setButtonUrl(linkMatch[0]);
+          }
         }
+      } else {
+        setError(data.error || "Failed to fetch post");
       }
-    } else {
-      setError(data.error || "Failed to fetch post");
+    } catch (err) {
+      setError("Something went wrong while fetching post");
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    setError("Something went wrong while fetching post");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   useEffect(() => {
     fetchPost();
   }, []);
 
-  // Handle campaign save
+  // Save campaign
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  setStatus("Saving...");
+    e.preventDefault();
+    setStatus("Saving...");
 
-  try {
-    // 🔍 Step 1: Check if campaign already exists
-    const checkRes = await fetch(`/api/campaigns?keyword=${encodeURIComponent(keyword)}`);
-    const checkData = await checkRes.json();
+    try {
+      const res = await fetch("/api/campaigns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          campaign_name: campaignName,
+          message_template: messageTemplate,
+          button_text: buttonText,
+          button_url: buttonUrl,
+        }),
+      });
 
-    if (checkRes.ok && checkData.exists) {
-      setStatus("❌ Campaign already exists");
-      return; // ⛔ stop execution, don’t add again
+      const data = await res.json();
+
+      if (res.ok) {
+        setStatus("✅ Campaign saved successfully!");
+      } else {
+        setStatus("❌ " + (data.error || "Something went wrong"));
+      }
+    } catch (err) {
+      setStatus("❌ Failed to save campaign");
     }
-
-    // Step 2: Create new campaign if not exists
-    const res = await fetch("/api/campaigns", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ keyword, message }),
-    });
-
-    const data = await res.json();
-
-    if (res.ok) {
-      setStatus("campaign saved successfully!");
-    } else {
-      setStatus("❌ " + (data.error || "Something went wrong"));
-    }
-  } catch (err) {
-    setStatus("❌ Failed to save campaign");
-  }
-};
-
+  };
 
   return (
     <>
       <Header />
       <div className="flex flex-col md:pb-8 pb-25 gap-10 pt-10 p-6 min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
-        {loading && <p className="text-gray-300 text-center">Loading post...</p>}
+        {loading && (
+          <p className="text-gray-300 text-center">Loading post...</p>
+        )}
         {error && <p className="text-red-400 text-center">{error}</p>}
 
         {post && (
@@ -108,7 +106,9 @@ const fetchPost = async () => {
                   className="w-full h-80 object-cover rounded-lg mb-4"
                 />
               )}
-              <p className="text-gray-300 whitespace-pre-line">{post.caption}</p>
+              <p className="text-gray-300 whitespace-pre-line">
+                {post.caption}
+              </p>
               <p className="text-xs text-gray-500 mt-3">
                 {post.timestamp
                   ? new Date(post.timestamp).toLocaleString()
@@ -124,7 +124,7 @@ const fetchPost = async () => {
               </a>
             </div>
 
-            {/* Right side - Auto DM Section */}
+            {/* Right side - Campaign Form */}
             <div className="flex flex-col bg-gray-900/80 rounded-2xl p-6 shadow-2xl">
               <button
                 onClick={() => setShowForm((prev) => !prev)}
@@ -133,59 +133,89 @@ const fetchPost = async () => {
                 {showForm ? "Close Form" : "Enable Auto DM"}
               </button>
               <p className="text-gray-400 text-sm mt-3 text-center">
-                If you enable this option, the system will automatically send
-                the respective link or message to the commenter.
+                Create a campaign: when a user comments a keyword, they’ll
+                receive your message with a button. After clicking the button,
+                they’ll be redirected to your link.
               </p>
 
-              {/* Campaign form (only visible after clicking button) */}
-             {showForm && (
-  <form
-    onSubmit={handleSubmit}
-    className="mt-6 space-y-5 w-full"
-  >
-    <div>
-      <label htmlFor="keyword" className="block mb-1 text-sm text-gray-300">Keyword</label>
-      <input
-        id="keyword"
-        type="text"
-        value={keyword}
-        onChange={(e) => setKeyword(e.target.value)}
-        className="w-full px-4 py-3 rounded-lg bg-gray-800/80 border border-gray-700 text-white"
-        placeholder="Keyword"
-        required
-      />
-    </div>
+              {showForm && (
+                <form onSubmit={handleSubmit} className="mt-6 space-y-5 w-full">
+                  <div>
+                    <label className="block mb-1 text-sm text-gray-300">
+                      Campaign Name
+                    </label>
+                    <input
+                      type="text"
+                      value={campaignName}
+                      onChange={(e) => setCampaignName(e.target.value)}
+                      className="w-full px-4 py-3 rounded-lg bg-gray-800/80 border border-gray-700 text-white"
+                      placeholder="e.g. October Promo"
+                      required
+                    />
+                  </div>
 
-    <div>
-      <label htmlFor="message" className="block mb-1 text-sm text-gray-300">Message</label>
-      <textarea
-        id="message"
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        className="w-full px-2 py-3 rounded-lg bg-gray-800/80 border border-gray-700 text-white"
-        placeholder="Message"
-        rows="4"
-      />
-    </div>
+                  <div>
+                    <label className="block mb-1 text-sm text-gray-300">
+                      Message Template
+                    </label>
+                    <textarea
+                      value={messageTemplate}
+                      onChange={(e) => setMessageTemplate(e.target.value)}
+                      className="w-full px-2 py-3 rounded-lg bg-gray-800/80 border border-gray-700 text-white"
+                      placeholder="This is the DM text."
+                      rows="3"
+                      required
+                    />
+                  </div>
 
-    {status && (
-      <p
-        className={`mt-3 text-sm text-center ${
-          status.includes("exists") ? "text-red-500" : "text-green-500"
-        }`}
-      > {status}
-      </p>
-    )}
+                  <div>
+                    <label className="block mb-1 text-sm text-gray-300">
+                      Button Text
+                    </label>
+                    <input
+                      type="text"
+                      value={buttonText}
+                      onChange={(e) => setButtonText(e.target.value)}
+                      className="w-full px-4 py-3 rounded-lg bg-gray-800/80 border border-gray-700 text-white"
+                      placeholder="e.g. Get Link"
+                      required
+                    />
+                  </div>
 
-    <button
-      type="submit"
-      className="w-full py-3 px-4 font-semibold rounded-lg shadow-md bg-indigo-600 hover:bg-indigo-700 cursor-pointer text-white"
-    >
-      {status === "Saving..." ? "Saving..." : "Save Campaign"}
-    </button>
-  </form>
-)}
+                  <div>
+                    <label className="block mb-1 text-sm text-gray-300">
+                      Button URL
+                    </label>
+                    <input
+                      type="url"
+                      value={buttonUrl}
+                      onChange={(e) => setButtonUrl(e.target.value)}
+                      className="w-full px-4 py-3 rounded-lg bg-gray-800/80 border border-gray-700 text-white"
+                      placeholder="https://example.com"
+                      required
+                    />
+                  </div>
 
+                  {status && (
+                    <p
+                      className={`mt-3 text-sm text-center ${
+                        status.includes("❌")
+                          ? "text-red-500"
+                          : "text-green-500"
+                      }`}
+                    >
+                      {status}
+                    </p>
+                  )}
+
+                  <button
+                    type="submit"
+                    className="w-full py-3 px-4 font-semibold rounded-lg shadow-md bg-indigo-600 hover:bg-indigo-700 cursor-pointer text-white"
+                  >
+                    {status === "Saving..." ? "Saving..." : "Save Campaign"}
+                  </button>
+                </form>
+              )}
             </div>
           </div>
         )}
