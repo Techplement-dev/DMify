@@ -19,7 +19,7 @@ function parseCookies(cookieHeader) {
   );
 }
 
-// ✅ GET: Fetch campaigns (all or existence check)
+// ✅ GET: Fetch campaigns or check existence
 export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
@@ -44,7 +44,10 @@ export async function GET(req) {
         .eq("campaign_name", campaignName)
         .maybeSingle();
 
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error) {
+        console.error("Supabase error in GET existence check:", error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
       return NextResponse.json({ exists: !!data });
     }
 
@@ -54,15 +57,19 @@ export async function GET(req) {
       .select("*")
       .eq("user_id", userId);
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      console.error("Supabase error in GET campaigns:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
     return NextResponse.json(data);
   } catch (error) {
     console.error("GET /campaigns error:", error);
-    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Something went wrong" }, { status: 500 });
   }
 }
 
-// ✅ POST: Create new campaign
+// ✅ POST: Create campaign
 export async function POST(req) {
   try {
     const cookieHeader = req.headers.get("cookie");
@@ -77,45 +84,59 @@ export async function POST(req) {
     const body = await req.json();
     const { campaign_name, message_template, button_text, button_url } = body;
 
-    if (!campaign_name || !message_template) {
-      return NextResponse.json({ error: "Campaign name and message template are required" }, { status: 400 });
+    // ✅ validation
+    if (!campaign_name || campaign_name.trim().length < 3) {
+      return NextResponse.json({ error: "Campaign name must be at least 3 characters long" }, { status: 400 });
+    }
+    if (!message_template || message_template.trim().length < 10) {
+      return NextResponse.json({ error: "Message must be at least 10 characters long" }, { status: 400 });
     }
 
-    // Check for duplicates
+    // ✅ Check for duplicates
     const { data: existingCampaign, error: fetchError } = await supabase
       .from("campaigns")
       .select("id")
       .eq("user_id", userId)
       .eq("campaign_name", campaign_name)
-      .single();
+      .maybeSingle();
 
-    if (fetchError && fetchError.code !== "PGRST116") {
+    if (fetchError) {
+      console.error("Supabase error in POST check duplicate:", fetchError);
       return NextResponse.json({ error: fetchError.message }, { status: 500 });
     }
+
     if (existingCampaign) {
-      return NextResponse.json({ message: "Campaign already exists" }, { status: 400 });
+      return NextResponse.json({ error: "Keyword already exists" }, { status: 400 });
     }
 
-    // Insert new campaign
+    // ✅ Insert new campaign
     const { data, error } = await supabase
       .from("campaigns")
-      .insert([{
-        user_id: userId,
-        campaign_name,
-        message_template,
-        button_text: button_text || null,
-        button_url: button_url || null,
-        status: "active",
-      }])
+      .insert([
+        {
+          user_id: userId,
+          campaign_name,
+          message_template,
+          button_text: button_text || null,
+          button_url: button_url || null,
+          status: "active",
+        },
+      ])
       .select();
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      console.error("Supabase error in POST insert:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
     return NextResponse.json({ message: "Campaign created successfully", data });
   } catch (error) {
     console.error("POST /campaigns error:", error);
-    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Something went wrong" }, { status: 500 });
   }
 }
+
+
 
 // ✅ PATCH: Update campaign
 export async function PATCH(req) {
@@ -134,6 +155,34 @@ export async function PATCH(req) {
 
     if (!id) return NextResponse.json({ error: "Campaign ID is required" }, { status: 400 });
 
+    // ✅ Validation
+    if (campaign_name && campaign_name.trim().length < 3) {
+      return NextResponse.json({ error: "Campaign name must be at least 3 characters long" }, { status: 400 });
+    }
+    if (message_template && message_template.trim().length < 10) {
+      return NextResponse.json({ error: "Message must be at least 10 characters long" }, { status: 400 });
+    }
+
+    // ✅ Duplicate check if campaign_name is being updated
+    if (campaign_name) {
+      const { data: existingCampaign, error: fetchError } = await supabase
+        .from("campaigns")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("campaign_name", campaign_name)
+        .neq("id", id) // exclude current campaign
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error("Supabase error in PATCH check duplicate:", fetchError);
+        return NextResponse.json({ error: fetchError.message }, { status: 500 });
+      }
+
+      if (existingCampaign) {
+        return NextResponse.json({ error: "Keyword already exists" }, { status: 400 });
+      }
+    }
+
     const updateData = {};
     if (campaign_name) updateData.campaign_name = campaign_name;
     if (message_template) updateData.message_template = message_template;
@@ -148,15 +197,20 @@ export async function PATCH(req) {
       .eq("user_id", userId)
       .select();
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      console.error("Supabase error in PATCH update:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
     return NextResponse.json({ message: "Campaign updated successfully", data });
   } catch (error) {
     console.error("PATCH /campaigns error:", error);
-    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Something went wrong" }, { status: 500 });
   }
 }
 
-// ✅ DELETE stays same
+
+// ✅ DELETE: Remove campaign
 export async function DELETE(req) {
   try {
     const cookieHeader = req.headers.get("cookie");
@@ -179,10 +233,14 @@ export async function DELETE(req) {
       .eq("id", id)
       .eq("user_id", userId);
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      console.error("Supabase error in DELETE:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
     return NextResponse.json({ message: "Campaign deleted successfully" });
   } catch (error) {
     console.error("DELETE /campaigns error:", error);
-    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Something went wrong" }, { status: 500 });
   }
 }

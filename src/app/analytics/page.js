@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Header from "../Header";
-import { FiTrash2, FiEdit } from "react-icons/fi"; // icons
-import { AiOutlinePlayCircle, AiOutlinePauseCircle } from "react-icons/ai"; // toggle icons
+import { FiTrash2, FiEdit } from "react-icons/fi";
+import { AiOutlinePlayCircle, AiOutlinePauseCircle } from "react-icons/ai";
 
 export default function AnalyticsPage() {
   const [analytics, setAnalytics] = useState([]);
@@ -11,12 +11,16 @@ export default function AnalyticsPage() {
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
 
-  // For modal editing
+  // Modal states
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState(null);
   const [editName, setEditName] = useState("");
   const [editMessage, setEditMessage] = useState("");
+  const [editButtonText, setEditButtonText] = useState("");
+  const [editButtonUrl, setEditButtonUrl] = useState("");
+  const [editError, setEditError] = useState("");
 
+  // Fetch analytics
   const fetchAnalytics = async () => {
     setLoading(true);
     try {
@@ -38,7 +42,7 @@ export default function AnalyticsPage() {
     fetchAnalytics();
   }, []);
 
-  // Delete campaign
+  // Delete
   const handleDelete = async (id) => {
     if (!confirm("Are you sure you want to delete this campaign?")) return;
 
@@ -74,7 +78,6 @@ export default function AnalyticsPage() {
         setAnalytics((prev) =>
           prev.map((c) => (c.id === id ? { ...c, status: newStatus } : c))
         );
-        //setStatus(`✅ Campaign ${newStatus}`);
       }
     } catch (err) {
       setStatus("❌ Failed to update campaign status");
@@ -86,44 +89,75 @@ export default function AnalyticsPage() {
     setEditingCampaign(campaign);
     setEditName(campaign.campaign_name);
     setEditMessage(campaign.message_template);
+    setEditButtonText(campaign.button_text || "");
+    setEditButtonUrl(campaign.button_url || "");
+    setEditError("");
     setEditModalOpen(true);
   };
 
   // Submit edit
-  const handleEditSubmit = async (e) => {
-    e.preventDefault();
+const handleEditSubmit = async (e) => {
+  e.preventDefault();
+  setEditError("");
+
+  // ✅ frontend validation
+  if (editName.trim().length < 3) {
+    setEditError("Keyword must be at least 3 characters long.");
+    return;
+  }
+  if (editMessage.trim().length < 10) {
+    setEditError("Message must be at least 10 characters long.");
+    return;
+  }
+
+  try {
+    const res = await fetch("/api/campaigns", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: editingCampaign.id,
+        campaign_name: editName,
+        message_template: editMessage,
+        button_text: editButtonText,
+        button_url: editButtonUrl,
+      }),
+    });
+
+    let data = {};
     try {
-      const res = await fetch("/api/campaigns", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-  id: editingCampaign.id,
-  keyword: editName,
-  message: editMessage,
-  button_text: editingCampaign?.button_text || "",
-  button_url: editingCampaign?.button_url || ""
-}),
-
-      });
-
-      if (res.ok) {
-        setAnalytics((prev) =>
-          prev.map((c) =>
-            c.id === editingCampaign.id
-              ? { ...c, campaign_name: editName, message_template: editMessage }
-              : c
-          )
-        );
-        setStatus("✅ Campaign updated successfully");
-        setEditModalOpen(false);
-      } else {
-        const data = await res.json();
-        setStatus("❌ " + (data.error || "Update failed"));
-      }
-    } catch (err) {
-      setStatus("❌ Failed to update campaign");
+      data = await res.json();
+    } catch {
+      data = {};
     }
-  };
+
+    if (res.ok) {
+      setAnalytics((prev) =>
+        prev.map((c) =>
+          c.id === editingCampaign.id
+            ? {
+                ...c,
+                campaign_name: editName,
+                message_template: editMessage,
+                button_text: editButtonText,
+                button_url: editButtonUrl,
+              }
+            : c
+        )
+      );
+      setStatus("✅ Campaign updated successfully");
+      setEditModalOpen(false);
+    } else {
+      if (res.status === 400 && data.error === "Keyword already exists") {
+        setEditError("❌ Keyword already exists. Please choose another one.");
+      } else {
+        setEditError(data.error || "Update failed");
+      }
+    }
+  } catch (err) {
+    setEditError("❌ Failed to update campaign");
+  }
+};
+
 
   return (
     <>
@@ -135,24 +169,16 @@ export default function AnalyticsPage() {
               Campaign Analytics
             </h2>
 
-            <div className="border-b border-gray-700 mb-6"></div>
-
             {loading && (
-              <p className="text-gray-300 text-center bg-gray-800/50 rounded-lg py-2">
-                Loading analytics...
-              </p>
+              <p className="text-gray-300 text-center">Loading analytics...</p>
             )}
 
             {error && (
-              <p className="text-red-400 text-center bg-red-900/40 rounded-lg py-2">
-                {error}
-              </p>
+              <p className="text-red-400 text-center">{error}</p>
             )}
 
             {status && (
-              <p className="text-green-400 text-center bg-green-900/40 rounded-lg py-2 mb-4">
-                {status}
-              </p>
+              <p className="text-green-400 text-center mb-4">{status}</p>
             )}
 
             {!loading && analytics.length === 0 ? (
@@ -175,25 +201,44 @@ export default function AnalyticsPage() {
                   </thead>
                   <tbody>
                     {analytics.map((c) => (
-                      <tr key={c.id} className="hover:bg-gray-800/50 transition duration-300">
-                        <td className="p-3 text-gray-200 font-semibold">{c.campaign_name}</td>
-                        <td className="p-3 text-gray-400 max-w-[300px] truncate">{c.message_template}</td>
+                      <tr
+                        key={c.id}
+                        className="hover:bg-gray-800/50 transition duration-300"
+                      >
+                        <td className="p-3 text-gray-200 font-semibold">
+                          {c.campaign_name}
+                        </td>
+                        <td className="p-3 text-gray-400 max-w-[300px] truncate">
+                          {c.message_template}
+                        </td>
                         <td className="p-3 text-gray-300">{c.totalDMs}</td>
-                        <td className="p-3 text-green-400 font-bold">{c.sentDMs}</td>
-                        <td className="p-3 text-red-400 font-bold">{c.failedDMs}</td>
-                        <td className="p-3 font-semibold text-indigo-300">{c.engagementRate ? `${c.engagementRate}%` : "0%"}</td>
+                        <td className="p-3 text-green-400 font-bold">
+                          {c.sentDMs}
+                        </td>
+                        <td className="p-3 text-red-400 font-bold">
+                          {c.failedDMs}
+                        </td>
+                        <td className="p-3 font-semibold text-indigo-300">
+                          {c.engagementRate ? `${c.engagementRate}%` : "0%"}
+                        </td>
                         <td className="p-3 flex gap-2">
-                          {/* Start/Pause Toggle */}
+                          {/* Start/Pause */}
                           <button
                             onClick={() => handleToggle(c.id, c.status || "paused")}
                             className={`p-1 rounded-full ${
-                              c.status === "active" ? "bg-yellow-500" : "bg-green-500"
+                              c.status === "active"
+                                ? "bg-yellow-500"
+                                : "bg-green-500"
                             }`}
                           >
-                            {c.status === "active" ? <AiOutlinePauseCircle size={20} /> : <AiOutlinePlayCircle size={20} />}
+                            {c.status === "active" ? (
+                              <AiOutlinePauseCircle size={20} />
+                            ) : (
+                              <AiOutlinePlayCircle size={20} />
+                            )}
                           </button>
 
-                          {/* Edit Button */}
+                          {/* Edit */}
                           <button
                             onClick={() => openEditModal(c)}
                             className="p-1 rounded-full bg-blue-500 hover:bg-blue-600 text-white"
@@ -201,7 +246,7 @@ export default function AnalyticsPage() {
                             <FiEdit size={18} />
                           </button>
 
-                          {/* Delete Button */}
+                          {/* Delete */}
                           <button
                             onClick={() => handleDelete(c.id)}
                             className="p-1 rounded-full bg-red-500 hover:bg-red-600 text-white"
@@ -220,74 +265,71 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Edit Modal */}
-{editModalOpen && (
-  <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50">
-    <div className="bg-gray-900 rounded-2xl p-6 w-[500px] shadow-2xl">
-      <h3 className="text-xl font-bold text-white mb-4">Edit Campaign</h3>
-      <form onSubmit={handleEditSubmit} className="space-y-4">
-        {/* Campaign Name */}
-        <input
-          type="text"
-          value={editName}
-          onChange={(e) => setEditName(e.target.value)}
-          className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white"
-          placeholder="Campaign Name"
-          required
-        />
+      {editModalOpen && (
+        <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50">
+          <div className="bg-gray-900 rounded-2xl p-6 w-[500px] shadow-2xl">
+            <h3 className="text-xl font-bold text-white mb-4">Edit Campaign</h3>
 
-        {/* Message Template */}
-        <textarea
-          value={editMessage}
-          onChange={(e) => setEditMessage(e.target.value)}
-          className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white"
-          placeholder="Message Template"
-          rows={4}
-          required
-        />
+            {editError && (
+              <p className="text-red-400 bg-red-900/40 p-2 rounded mb-3">
+                {editError}
+              </p>
+            )}
 
-        {/* Button Text */}
-        <input
-          type="text"
-          value={editingCampaign?.button_text || ""}
-          onChange={(e) =>
-            setEditingCampaign((prev) => ({ ...prev, button_text: e.target.value }))
-          }
-          className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white"
-          placeholder="Button Text (optional)"
-        />
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white"
+                placeholder="Campaign Name"
+                required
+              />
 
-        {/* Button URL */}
-        <input
-          type="url"
-          value={editingCampaign?.button_url || ""}
-          onChange={(e) =>
-            setEditingCampaign((prev) => ({ ...prev, button_url: e.target.value }))
-          }
-          className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white"
-          placeholder="Button URL (optional)"
-        />
+              <textarea
+                value={editMessage}
+                onChange={(e) => setEditMessage(e.target.value)}
+                className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white"
+                placeholder="Message Template"
+                rows={4}
+                required
+              />
 
-        <div className="flex justify-end gap-3 mt-2">
-          <button
-            type="button"
-            onClick={() => setEditModalOpen(false)}
-            className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white"
-          >
-            Save
-          </button>
+              <input
+                type="text"
+                value={editButtonText}
+                onChange={(e) => setEditButtonText(e.target.value)}
+                className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white"
+                placeholder="Button Text (optional)"
+              />
+
+              <input
+                type="url"
+                value={editButtonUrl}
+                onChange={(e) => setEditButtonUrl(e.target.value)}
+                className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white"
+                placeholder="Button URL (optional)"
+              />
+
+              <div className="flex justify-end gap-3 mt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditModalOpen(false)}
+                  className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white"
+                >
+                  Save
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </form>
-    </div>
-  </div>
-)}
-
-     
+      )}
     </>
   );
 }

@@ -57,34 +57,69 @@ export default function InstagramPostDetail() {
     fetchPost();
   }, []);
 
-  // Save campaign
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setStatus("Saving...");
+// Save campaign
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
+  // ✅ Frontend validations
+  if (campaignName.trim().length < 3) {
+    setStatus("❌ Campaign name must be at least 3 characters long.");
+    return;
+  }
+
+  if (messageTemplate.trim().length < 10) {
+    setStatus("❌ Message template must be at least 10 characters long.");
+    return;
+  }
+
+  setStatus("Saving...");
+
+  try {
+    const res = await fetch("/api/campaigns", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        campaign_name: campaignName,
+        message_template: messageTemplate,
+        button_text: buttonText,
+        button_url: buttonUrl,
+      }),
+    });
+
+    let data;
     try {
-      const res = await fetch("/api/campaigns", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          campaign_name: campaignName,
-          message_template: messageTemplate,
-          button_text: buttonText,
-          button_url: buttonUrl,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        setStatus("✅ Campaign saved successfully!");
-      } else {
-        setStatus("❌ " + (data.error || "Something went wrong"));
-      }
-    } catch (err) {
-      setStatus("❌ Failed to save campaign");
+      data = await res.json();
+    } catch {
+      data = {};
     }
-  };
+
+    if (res.ok) {
+      setStatus("✅ Campaign saved successfully!");
+    } else {
+      let errorMessage = "Something went wrong";
+
+      if (data?.error) {
+        errorMessage = data.error;
+      } else if (data?.message) {
+        errorMessage = data.message;
+      } else if (res.status === 400) {
+        errorMessage = "Invalid request. Please check your inputs.";
+      } else if (res.status === 401) {
+        errorMessage = "You are not authorized. Please log in again.";
+      } else if (res.status === 409) {
+        errorMessage = "Keyword already exists. Try another one.";
+      } else if (res.status >= 500) {
+        errorMessage = "Server error. Please try again later.";
+      }
+
+      setStatus("❌ " + errorMessage);
+    }
+  } catch (err) {
+    console.error(err);
+    setStatus("❌ Network error. Please check your connection.");
+  }
+};
+
 
   return (
     <>
